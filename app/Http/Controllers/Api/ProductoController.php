@@ -24,7 +24,6 @@ class ProductoController extends Controller
             'iva' => 'required|numeric'
         ]);
 
-        // Crear el producto
         Producto::create([
             'codigo' => $request->codigo,
             'descripcion' => $request->descripcion,
@@ -35,7 +34,7 @@ class ProductoController extends Controller
 
         return response()->json([
             'estado' => 1,
-            'data' => $producto
+            'mensaje' => "Producto almacenado correctamente"
         ], 201);
     }
 
@@ -47,8 +46,19 @@ class ProductoController extends Controller
     public function update(Request $request, $id)
     {
         $producto = Producto::findOrFail($id);
-        $producto->update($request->all());
-        return response()->json($producto);
+
+        $producto->codigo = $request->codigo;
+        $producto->descripcion = $request->descripcion;
+        $producto->stock = $request->stock;
+        $producto->precio = $request->precio;
+        $producto->iva = $request->iva;
+
+        $producto->save();
+
+        return response()->json([
+            'estado'  => 1,
+            'mensaje' => 'Producto actualizado exitosamente'
+        ], 200);
     }
 
     public function destroy($id)
