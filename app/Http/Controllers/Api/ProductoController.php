@@ -4,66 +4,99 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use App\Models\Producto;
+use App\Repositories\ProductoRepository;
+use Exception;
 
 class ProductoController extends Controller
 {
-    
+    protected $repo;
+
+    public function __construct(ProductoRepository $repo)
+    {
+        $this->repo = $repo;
+    }
+
     public function index()
     {
-        return Producto::all();
+        return $this->repo->obtenerTodos();
     }
 
     public function store(Request $request)
     {
         $request->validate([
-            'codigo' => 'required',
+            'codigo' => 'required|max:255',
             'descripcion' => 'required',
-            'stock' => 'required|numeric',
+            'stock' => 'required|integer',
             'precio' => 'required|numeric',
             'iva' => 'required|numeric'
         ]);
 
-        Producto::create([
-            'codigo' => $request->codigo,
-            'descripcion' => $request->descripcion,
-            'stock' => $request->stock,
-            'precio' => $request->precio,
-            'iva' => $request->iva
-        ]);
+        $this->repo->guardar($request->all());
 
         return response()->json([
             'estado' => 1,
-            'mensaje' => "Producto almacenado correctamente"
+            'mensaje' => 'Producto almacenado correctamente'
         ], 201);
     }
 
-    public function show(string $id)
+    public function show($id)
     {
-        return Producto::findOrFail($id);
+        $producto = $this->repo->obtenerPorId($id);
+
+        if (!$producto) {
+            return response()->json([
+                'estado' => 0,
+                'mensaje' => "Producto no encontrado con ID: $id"
+            ], 404);
+        }
+
+        return $producto;
     }
 
     public function update(Request $request, $id)
     {
-        $producto = Producto::findOrFail($id);
+        $filas = $this->repo->actualizar($id, $request->all());
 
-        $producto->codigo = $request->codigo;
-        $producto->descripcion = $request->descripcion;
-        $producto->stock = $request->stock;
-        $producto->precio = $request->precio;
-        $producto->iva = $request->iva;
-
-        $producto->save();
+        if ($filas === 0) {
+            return response()->json([
+                'estado' => 0,
+                'mensaje' => "No se encontró el producto con ID $id para actualizar"
+            ], 404);
+        }
 
         return response()->json([
-            'estado'  => 1,
+            'estado' => 1,
             'mensaje' => 'Producto actualizado exitosamente'
-        ], 200);
+        ]);
     }
 
     public function destroy($id)
     {
-        Producto::destroy($id);
-        return response()->json(null, 204);
+        try {
+            $filas = $this->repo->eliminar($id);
+
+            if ($filas === 0) {
+                throw new Exception("El producto con ID $id no existe.");
+            }
+
+            return response()->json([
+                'estado'  => 1,
+                'mensaje' => 'Producto eliminado exitosamente'
+            ]);
+        }
+        catch (Exception $e) {
+
+            if (str_contains($e->getMessage(), 'no existe')) {
+                return response()->json([
+                    'estado'  => 0,
+                    'mensaje' => $e->getMessage()
+                ], 404);
+            }
+
+            return response()->json([
+                'estado'  => 0,
+                'mensaje' => 'Error al intentar eliminar: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }
