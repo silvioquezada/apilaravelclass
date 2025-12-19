@@ -6,6 +6,8 @@ use App\Http\Controllers\Api\LoginController;
 
 Route::post('/login', [LoginController::class, 'login']);
 
+
+
 Route::middleware('jwt')->group(function () {
 
     Route::get('/productos', [ProductoController::class, 'index']);
